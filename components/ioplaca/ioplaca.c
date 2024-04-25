@@ -172,9 +172,8 @@ uint8_t io_le_escreve(uint8_t saidas)
         gpio_set_level(IO_CK,0);
     } 
     gpio_set_level(IO_SH_LD,0);
-    gpio_set_level(IO_SH_LD,1);//testar
+    gpio_set_level(IO_SH_LD,1);
     gpio_set_level(IO_SH_LD,0);
-
     return entradas;
 
 }

@@ -21,13 +21,12 @@
 #include "freertos/task.h"
 #include "esp_log.h"
 
-#include "driver/gpio.h"
-
 #include "ioplaca.h"   // Controles das Entradas e Saídas digitais e do teclado
 #include "lcdvia595.h" // Controles do Display LCD
 #include "hcf_adc.h"   // Controles do ADC
+#include "mp_hcf.h"   // Controles do ADC
 
-#include "mp_hcf.h"
+//#include "driver/adc.h"
 
 // Área das macros
 //-----------------------------------------------------------------------------------------------------------------------
@@ -35,9 +34,9 @@
 #define CHAVE (entradas>>7)&1
 
 #define LIGAR 'C'==le_teclado()
-#define HORA '7'==le_teclado()
-#define ANTIH '8'==le_teclado()
 #define DESLIGAR '0'==le_teclado()
+#define AH '7'==le_teclado()
+#define HR '8'==le_teclado()
 
 #define LIGA_R1     saidas|0b00000001
 #define DESLIGA_R1  saidas&0b11111110
@@ -53,14 +52,22 @@ static uint8_t entradas, saidas = 0; //variáveis de controle de entradas e saí
 
 // Funções e ramos auxiliares
 //-----------------------------------------------------------------------------------------------------------------------
+/*static void configura_adc()
+{
+    adc1_config_width(ADC_WIDTH_BIT_12);
+    adc1_config_channel_atten(ADC1_CHANNEL_0, ADC_ATTEN_DB_11);
+}*/
 
 // Programa Principal
 //-----------------------------------------------------------------------------------------------------------------------
+uint32_t oldval = 0;
+uint32_t valor = 0;
+int posicao = 0;
 
 void app_main(void)
 {
     /////////////////////////////////////////////////////////////////////////////////////   Programa principal
-    vTaskDelay(500 / portTICK_PERIOD_MS); // entrada do monitor
+
 
     // a seguir, apenas informações de console, aquelas notas verdes no início da execução
     ESP_LOGI(TAG, "Iniciando...");
@@ -70,27 +77,16 @@ void app_main(void)
     
     // inicializar os IOs e teclado da placa
     ioinit();      
-   
+    entradas = io_le_escreve(saidas); // Limpa as saídas e lê o estado das entradas
 
-    entradas = io_le_escreve (0b00000100); // ativa TRIAC, e desativa todas as outras
-    
-    printf("Entradas ativas em hexadecimal [binário]: %x [%x %x %x %x %x %x %x %x] \n", entradas,
-                                                                                        (entradas>>7)&1,(entradas>>6)&1,(entradas>>5)&1,(entradas>>4)&1,
-                                                                                        (entradas>>3)&1,(entradas>>2)&1,(entradas>>1)&1,entradas&1);
-   
-        
-    //entradas = io_le_escreve(saidas); // Limpa as saídas e lê o estado das entradas
     MP_init();
-
 
     // inicializar o display LCD 
     lcd595_init();
-
     lcd595_write(1,1,"   Jornada 1   ");
-  //  printf("%x \n", entradas);
-   // lcd595_write(2,1,"Programa Basico");
+    lcd595_write(2,1,"Programa Basico");
     
-    /*// Inicializar o componente de leitura de entrada analógica
+    // Inicializar o componente de leitura de entrada analógica
     esp_err_t init_result = hcf_adc_iniciar();
     if (init_result != ESP_OK) {
         ESP_LOGE("MAIN", "Erro ao inicializar o componente ADC personalizado");
@@ -105,16 +101,24 @@ void app_main(void)
 
     /////////////////////////////////////////////////////////////////////////////////////   Periféricos inicializados
 
-    rotacionar_MP(1, 270.0);*/
+   // rotacionar_MP(1, 30);
+   // configura_adc();
 
     /////////////////////////////////////////////////////////////////////////////////////   Início do ramo principal                    
     while (1)                                                                                                                         
     {                                                                                                                                 
         //_______________________________________________________________________________________________________________________________________________________ //
         //-  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - -  -  -  -  -  -  -  -  -  -  Escreva seu código aqui!!! //
-           
-        /*entradas = io_le_escreve (saidas);
+        //int valor = adc1_get_raw(ADC_CHANNEL_0)*360/4095;
+        
+        esp_err_t read_result = hcf_adc_ler_3(&valor); 
+        valor = valor*270/4095;
 
+        entradas = io_le_escreve (saidas);
+        ESP_LOGI(TAG, "Valor ADC:  %"PRIu32" ",valor );
+
+        posicao = valor - oldval;
+        ESP_LOGI(TAG, "Result:  %d" ,posicao);
         if(CHAVE) 
         {
             saidas = LIGA_R1;
@@ -135,22 +139,27 @@ void app_main(void)
             saidas = DESLIGA_R2;
             lcd595_write(2,12, "[ ]");
         }
-        if(HORA)
+        if (posicao > 2)
         {
-            rotacionar_MP(0, 90.0);
+            rotacionar_MP(1,posicao);
+            oldval = valor;
         }
-        if(ANTIH)
+        else if(posicao < -2)
         {
-            rotacionar_MP(1, 90.0);
-        }*/
+            rotacionar_MP(0,posicao*-1);
+            oldval = valor;
+        }
+        //rotacionar_MP(0,oldval - valor);
+        
+
         
         //-  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - -  -  -  -  -  -  -  -  -  -  Escreva seu só até aqui!!! //
         //________________________________________________________________________________________________________________________________________________________//
-        vTaskDelay(10 / portTICK_PERIOD_MS);    // delay mínimo obrigatório, se retirar, pode causar reset do ESP
+        vTaskDelay(500 / portTICK_PERIOD_MS);    // delay mínimo obrigatório, se retirar, pode causar reset do ESP
     }
     
     // caso erro no programa, desliga o módulo ADC
-    hcf_adc_limpar();
+ //   hcf_adc_limpar();
 
     /////////////////////////////////////////////////////////////////////////////////////   Fim do ramo principal
     

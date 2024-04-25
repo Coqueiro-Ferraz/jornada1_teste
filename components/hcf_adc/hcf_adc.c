@@ -83,7 +83,7 @@ esp_err_t hcf_adc_ler(uint32_t *value) {
     } else {
         *value = (uint32_t)calibrated_value;
     }
-
+    ESP_LOGI(TAG, "Valor ADC:  %"PRIu32" ",*value );
     return ESP_OK;
 }
 
@@ -103,7 +103,7 @@ esp_err_t hcf_adc_ler_3(uint32_t *value) {
     calibrated_value /= HCF_ADC_AMOSTRAS;
 
     *value = (uint32_t)calibrated_value;
-
+    ESP_LOGI(TAG, "Valor ADC:  %"PRIu32" ",*value );
     return ESP_OK;
 }
 
