@@ -17,6 +17,7 @@
 // Área de inclusão das bibliotecas
 //-----------------------------------------------------------------------------------------------------------------------
 #include <stdio.h>
+#include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_log.h"
@@ -58,12 +59,31 @@ static uint8_t entradas, saidas = 0; //variáveis de controle de entradas e saí
     adc1_config_channel_atten(ADC1_CHANNEL_0, ADC_ATTEN_DB_11);
 }*/
 
+/*calculadora
+le primeiro digito do primeiro número
+le próximo digito do primeiro número ou operação
+le primeiro digito do segundo número
+le próximo digito do segundo número ou resultado
+
+variáveis
+int num 1
+int num 2
+int res
+int opera
+int estado
+int digitos
+
+
+*/
+
 // Programa Principal
 //-----------------------------------------------------------------------------------------------------------------------
 uint32_t oldval = 0;
 uint32_t valor = 0;
 int posicao = 0;
 
+int digito = 0, estado = 0, num1 = 0, num2 = 0, opera = 0, res = 0;
+char exibir[16];
 void app_main(void)
 {
     /////////////////////////////////////////////////////////////////////////////////////   Programa principal
@@ -96,8 +116,8 @@ void app_main(void)
     vTaskDelay(1000 / portTICK_PERIOD_MS); 
     lcd595_clear();
 
-    lcd595_write(1,0, " Programa Teste ");
-    lcd595_write(2,0, "R1 [ ] - R2 [ ] ");
+    /*lcd595_write(1,0, " Programa Teste ");
+    lcd595_write(2,0, "R1 [ ] - R2 [ ] ");*/
 
     /////////////////////////////////////////////////////////////////////////////////////   Periféricos inicializados
 
@@ -111,7 +131,78 @@ void app_main(void)
         //-  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - -  -  -  -  -  -  -  -  -  -  Escreva seu código aqui!!! //
         //int valor = adc1_get_raw(ADC_CHANNEL_0)*360/4095;
         
-        esp_err_t read_result = hcf_adc_ler_3(&valor); 
+        char tecla = le_teclado();
+        if(tecla >= '0' && tecla <= '9')
+        {
+            if(estado == 0)
+            {
+                num1 = num1*10 + (tecla - '0');
+                digito++;
+                sprintf(exibir, "%c", tecla);
+                lcd595_write(1,digito,exibir);
+            }
+            else if(estado == 1)
+            {
+                num2 = num2*10 + (tecla - '0');
+                digito++;
+                 sprintf(exibir, "%c", tecla);
+                lcd595_write(1,digito,exibir);
+            }
+        }
+        else if(tecla == '+')
+        {
+            if(estado == 0)
+            {
+                digito++;
+                 sprintf(exibir, "%c", tecla);
+                lcd595_write(1,digito,exibir);
+                estado = 1;
+                opera = 0;
+            }
+            else if(estado == 1)
+            {
+                switch (opera)
+                {
+                case 0: res = num1 + num2;
+                    break;
+                
+                default: res = 0;
+                    break;
+                }
+                sprintf(exibir,"= %d", res);
+                lcd595_write(2,3, exibir);
+            }
+        }
+        else if(tecla == '=')
+        {
+            if (estado == 0) res = num1;
+            else
+            {
+                switch (opera)
+                {
+                case 0: res = num1 + num2;
+                    break;
+                
+                default: res = 0;
+                    break;
+                }
+                sprintf(exibir,"= %d", res);
+                lcd595_write(2,3, exibir);
+                estado = 2;
+            }
+        }
+        else if (tecla == 'C')
+        {
+            estado = 0;
+            res = 0;
+            num1 = 0;
+            num2 = 0;
+            opera = 0;
+            digito = 0;
+            lcd595_clear();
+        }
+
+        /*esp_err_t read_result = hcf_adc_ler_3(&valor); 
         valor = valor*270/4095;
 
         entradas = io_le_escreve (saidas);
@@ -149,7 +240,7 @@ void app_main(void)
             rotacionar_MP(0,posicao*-1);
             oldval = valor;
         }
-        //rotacionar_MP(0,oldval - valor);
+        //rotacionar_MP(0,oldval - valor);*/
         
 
         
